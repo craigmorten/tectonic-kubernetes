@@ -1,4 +1,4 @@
-# mat.kubernetes.coreos.local
+# tectonic-kubernetes
 
 Run a local instance of Kubernetes using CoreOS Tectonic, Vagrant and VirtualBox.
 
