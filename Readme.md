@@ -5,8 +5,8 @@ Run a local instance of Kubernetes using CoreOS Tectonic, Vagrant and VirtualBox
 ## Prequisites
 
 - Docker
-- Vagrant
-- VirtualBox
+- Vagrant `https://www.vagrantup.com/downloads.html`
+- VirtualBox `https://www.virtualbox.org/wiki/Downloads`
 
 ## Usage
 
