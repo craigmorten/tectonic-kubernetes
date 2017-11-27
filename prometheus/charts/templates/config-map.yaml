@@ -1,0 +1,13 @@
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: prometheus
+  namespace: default
+data:
+  alerting.rules: |
+    # Alert if deployment missing
+    # ALERT SimpleDeploymentMissing
+    #   IF kube_deployment_status_replicas{deployment="simple-deployment"} < 3
+    #   FOR 10m
+    #   LABELS {severity="critical"}
+    #   ANNOTATIONS {description="Prometheus could not find the Simple Deployment"}

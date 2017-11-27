@@ -1,0 +1,139 @@
+#!/bin/bash
+
+# tectonic
+#
+# This script sets up a local kubernetes environment using CoreOS Tectonic,
+# Vagrant and VirtualBox.
+#
+# Prequisites:
+# - Vagrant installed
+# - VirtualBox installed
+#
+# Usage:
+#
+#   tectonic [subcommand]
+#
+# List of subcommands:
+# - start
+# - destroy
+# - pause
+# - kick
+#
+# If no subcommand is provided, the start subcommand will be implemented
+# by default.
+
+function log {
+    echo -e "[$(date)]: $*"
+}
+
+# Detect OS
+os=`uname`
+if [[ "$os" == 'Darwin' ]]; then
+   arch='darwin'
+else
+   arch='linux'
+fi
+
+# Set base basepath
+basepath=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
+vagrantpath="${basepath}/tectonic-sandbox-1.7.1-tectonic.2"
+cd ${basepath}
+
+cmd=$1
+if [ -z ${cmd+x} ]; then
+    cmd="start"
+fi
+
+case ${cmd} in
+start)
+    # Step 1: ensure kubectl installed
+    command -v kubectl >/dev/null 2>&1 || {
+        log "kubectl not found on system, installing...";
+        wget https://storage.googleapis.com/kubernetes-release/release/v1.0.6/bin/${arch}/amd64/kubectl
+        chmod +x kubectl
+        mv kubectl /usr/local/bin/kubectl
+    }
+    log "kubectl installed"
+
+    # Step 2: ensure vagrant installed
+    command -v vagrant >/dev/null 2>&1 || {
+        log "vagrant not found on system"
+        log "please install from https://www.vagrantup.com/downloads.html"
+        log "exiting...";
+        exit 1
+    }
+    log "vagrant installed"
+
+    # Step 3: ensure openssl can be used by vagrant
+    command -v openssl >/dev/null 2>&1 || {
+        log "openssl not found on system, exiting...";
+        exit 1
+    }
+    if [ ! -L /opt/vagrant/embedded/bin/openssl ]; then
+        log "creating openssl symlink for vagrant"
+        sudo ln -sf $(whereis openssl) /opt/vagrant/embedded/bin/openssl
+    fi
+    log "openssl configured correctly"
+
+    # Step 4: ensure that VirtualBox is installed
+    command -v vboxmanage >/dev/null 2>&1 || {
+        log "VirtualBox not found on system"
+        log "please install from https://www.virtualbox.org/wiki/Downloads"
+        log "exiting...";
+        exit 1
+    }
+    log "VirtualBox installed, using version:"
+    vboxmanage --version
+
+    # Step 5: update ignition plugin
+    # vagrant plugin update vagrant-ignition
+
+    # Step 6: start vagrant
+    cd ${vagrantpath}
+    vagrant up --provider=virtualbox
+    cd ${basepath}
+    log "vagrant setup complete, ui available at https://console.tectonicsandbox.com/"
+
+    # Step 7: configure kubectl
+    export KUBECONFIG="${vagrantpath}/provisioning/etc/kubernetes/kubeconfig"
+
+    # Step 8: install helm
+    command -v helm >/dev/null 2>&1 || {
+        curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get > get-helm.sh
+        chmod 700 get-helm.sh
+        ./get-helm.sh
+    }
+    helm init --client-only
+    log "helm installed, using version:"
+    helm version
+
+    # Step 9: install prometheus
+    log "installing prometheus through helm and tiller..."
+    helm list --short | grep prometheus >/dev/null 2>&1
+    if [ "$?" -eq "1" ]; then
+        helm install --name prometheus prometheus/charts
+    else
+        helm upgrade prometheus prometheus/charts
+    fi
+    log "prometheus installed, available at http://prometheus.ingress.tectonicsandbox.com/"
+
+    cd ${basepath}
+    ;;
+destroy)
+    cd ${vagrantpath}
+    vagrant destroy -f
+    vagrant box remove coreos-beta --all --provider=virtualbox
+    cd ${basepath}
+    ;;
+pause)
+    cd ${vagrantpath}
+    vagrant halt
+    cd ${basepath}
+    ;;
+kick)
+    cd ${vagrantpath}
+    vagrant halt
+    vagrant up --provider=virtualbox
+    cd ${basepath}
+    ;;
+esac
