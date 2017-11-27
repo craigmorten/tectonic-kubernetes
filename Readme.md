@@ -20,6 +20,7 @@ List of optional subcommands:
 - destroy
 - pause
 - kick
+- config
 
 If no subcommand is provided, the start subcommand will be implemented
 by default.

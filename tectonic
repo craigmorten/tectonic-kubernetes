@@ -96,6 +96,9 @@ start)
 
     # Step 7: configure kubectl
     export KUBECONFIG="${vagrantpath}/provisioning/etc/kubernetes/kubeconfig"
+    kubectl config use-context vagrant
+    mkdir -p ~/.kube/
+    cp ${vagrantpath}/provisioning/etc/kubernetes/kubeconfig ~/.kube/config
 
     # Step 8: install helm
     command -v helm >/dev/null 2>&1 || {
@@ -107,15 +110,18 @@ start)
     log "helm installed, using version:"
     helm version
 
-    # Step 9: install prometheus
-    log "installing prometheus through helm and tiller..."
-    helm list --short | grep prometheus >/dev/null 2>&1
-    if [ "$?" -eq "1" ]; then
-        helm install --name prometheus prometheus/charts
-    else
-        helm upgrade prometheus prometheus/charts
-    fi
-    log "prometheus installed, available at http://prometheus.ingress.tectonicsandbox.com/"
+    # Step 9: install helm charts
+    log "installing charts through helm and tiller..."
+    for chart in ${basepath}/charts/*; do
+        chartname=${chart##*/}
+        helm list --short | grep ${chartname} >/dev/null 2>&1
+        if [ "$?" -eq "1" ]; then
+            helm install --name ${chartname} ${chart}
+        else
+            helm upgrade ${chartname} ${chart}
+        fi
+        log "${chartname} installed"
+    done
 
     cd ${basepath}
     ;;
@@ -134,6 +140,14 @@ kick)
     cd ${vagrantpath}
     vagrant halt
     vagrant up --provider=virtualbox
+    cd ${basepath}
+    ;;
+config)
+    cd "${vagrantpath}/provisioning/etc/kubernetes/"
+    export KUBECONFIG="${vagrantpath}/provisioning/etc/kubernetes/kubeconfig"
+    kubectl config use-context vagrant
+    mkdir -p ~/.kube/
+    cp ${vagrantpath}/provisioning/etc/kubernetes/kubeconfig ~/.kube/config
     cd ${basepath}
     ;;
 esac
