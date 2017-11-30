@@ -10,8 +10,16 @@ Run a local instance of Kubernetes using CoreOS Tectonic, Vagrant and VirtualBox
 
 ## Usage
 
+Ensure you have execute permissions:
+
 ```sh
-  tectonic [subcommand]
+chmod +x tectonic
+```
+
+Use the command as so:
+
+```sh
+tectonic [subcommand]
 ```
 
 List of optional subcommands:
